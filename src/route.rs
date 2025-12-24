@@ -56,7 +56,7 @@ impl Grid {
     }
 
     /// Convert a position to a place in the grid.
-    fn to_cell(&self, p: egui::Pos2) -> GridCoord {
+    fn pos_to_cell(&self, p: egui::Pos2) -> GridCoord {
         // turn into origin relative coordinates.
         let rel = p - self.origin;
 
@@ -191,10 +191,10 @@ impl<'a> AStar<'a> {
 
     pub fn find_path(&mut self, begin: egui::Pos2, finish: egui::Pos2) -> Option<Vec<egui::Pos2>> {
         // get the starting cell.
-        let start = self.field.grid.to_cell(begin);
+        let start = self.field.grid.pos_to_cell(begin);
 
         // get the ending cell.
-        let end = self.field.grid.to_cell(finish);
+        let end = self.field.grid.pos_to_cell(finish);
 
         // reject if the goal is in a blocked region.
         if self.field.cost_at(end)? == f32::MAX {

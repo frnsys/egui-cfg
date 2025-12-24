@@ -3,16 +3,15 @@ pub mod style;
 pub mod view;
 
 use crate::style::NodeStyle;
-use egui::{Color32, Galley, Pos2, Rect, Ui, vec2};
-use petgraph::{
-    graph::NodeIndex,
-    stable_graph::StableGraph,
-    visit::{EdgeRef, IntoEdgeReferences},
-};
+use egui::text::LayoutJob;
+use egui::{Galley, Pos2, Rect, Ui, vec2};
+
+use petgraph::{graph::NodeIndex, stable_graph::StableGraph};
+use rust_sugiyama::configure::Config;
 
 pub trait BlockLike: Clone {
-    fn title(&self) -> &str;
-    fn body_lines(&self) -> &[String];
+    fn title(&self) -> &String;
+    fn body_layouts(&self) -> LayoutJob;
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -52,13 +51,12 @@ impl Default for LayoutConfig {
     }
 }
 
-impl From<&LayoutConfig> for rust_sugiyama::configure::Config {
+impl From<&LayoutConfig> for Config {
     fn from(lhs: &LayoutConfig) -> Self {
-        let mut cfg = rust_sugiyama::configure::Config::default();
-
-        cfg.vertex_spacing = lhs.vertex_spacing;
-
-        cfg
+        Config {
+            vertex_spacing: lhs.vertex_spacing,
+            ..Default::default()
+        }
     }
 }
 
@@ -70,20 +68,8 @@ pub fn get_block_rectangle<N: BlockLike>(
     // where the block that we're going to draw starts.
     let block_position = Pos2::new(0.0, 0.0);
 
-    // get the width of the content (the size of the node without the padding).
-    let content_width = style.size.x - style.padding.x * 2.0;
-
-    let body_text = block.body_lines().join("\n");
-
     // get the text galley so we can get information related to it.
-    let body_galley = ui.fonts(|f| {
-        f.layout(
-            body_text,
-            style.text_font.clone(),
-            Color32::WHITE,
-            content_width,
-        )
-    });
+    let body_galley = ui.fonts_mut(|f| f.layout_job(block.body_layouts()));
 
     // ge the total size of the height including the padding, the text and the header.
     let block_height = style.header_height + style.padding.y * 2.0 + body_galley.size().y;
@@ -108,20 +94,11 @@ pub fn get_cfg_layout<N: BlockLike, E: Clone>(
     };
 
     let mut graph = graph.clone();
-
-    // get all nodes that have an outgoing edge that connects to the same node.
-    let loops: Vec<(petgraph::graph::NodeIndex, E)> = graph
-        .edge_references()
-        .filter(|e| e.source() == e.target())
-        .map(|e| (e.source(), e.weight().clone()))
-        .collect();
-
-    // remove all the edges that point to the same node.
     for edge in graph.edge_indices().collect::<Vec<_>>() {
-        if let Some((u, v)) = graph.edge_endpoints(edge) {
-            if u == v {
-                graph.remove_edge(edge);
-            }
+        if let Some((u, v)) = graph.edge_endpoints(edge)
+            && u == v
+        {
+            graph.remove_edge(edge);
         }
     }
 
@@ -129,11 +106,6 @@ pub fn get_cfg_layout<N: BlockLike, E: Clone>(
 
     // NOTE: maybe there will be a case when we need to get the full vector.
     let (coords, width, height) = info[0].clone();
-
-    // add the loop back after we've placed nodes.
-    for (n, w) in loops {
-        graph.add_edge(n, n, w);
-    }
 
     CfgLayout {
         coords,

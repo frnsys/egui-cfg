@@ -74,7 +74,7 @@ impl<'a, N: BlockLike, E: EdgeLike> CfgView<'a, N, E> {
     fn get_world_rect(&self, expand: Option<f32>) -> Rect {
         let mut bounds = egui::Rect::NOTHING;
 
-        // unionize all of the rects we created.
+        // unionize all the rects we created.
         for rects in self.block_rects.values() {
             bounds = bounds.union(*rects);
         }
@@ -170,7 +170,8 @@ impl<'a, N: BlockLike, E: EdgeLike> CfgView<'a, N, E> {
             );
 
             // block title, could be empty or not.
-            let label = format!("{}", block.title());
+            let label = block.title().to_string();
+
             // NOTE: have an option to put the title in the middle of the header rectangle.
             let label_pos = header_rectangle.left_center() + vec2(style.button_padding.x, 0.0);
 
@@ -214,7 +215,7 @@ impl<'a, N: BlockLike, E: EdgeLike> CfgView<'a, N, E> {
         for node in self.graph.node_indices() {
             let graph = &self.graph;
 
-            // get the indegree of hte current node.
+            // get the indegree of the current node.
             let inputs = graph.neighbors_directed(node, petgraph::Incoming).count();
             // get the outdegree of the current node.
             let outputs = graph.neighbors_directed(node, petgraph::Outgoing).count();
@@ -243,23 +244,17 @@ impl<'a, N: BlockLike, E: EdgeLike> CfgView<'a, N, E> {
         }
     }
 
-    fn draw_arrow_tip(
-        &self,
-        ui: &mut egui::Ui,
-        tip: egui::Pos2,
-        dir: Option<egui::Vec2>,
-        selected: bool,
-    ) {
+    fn draw_arrow_tip(&self, ui: &mut Ui, tip: Pos2, dir: Option<egui::Vec2>, selected: bool) {
         let size = self.style.edge.width * 4.0;
 
         // get the unit direction of the arrow
-        let dir = dir.unwrap_or(egui::vec2(0.0, 1.0)).normalized();
+        let dir = dir.unwrap_or(vec2(0.0, 1.0)).normalized();
 
         // get the base of the triangle.
         let base = tip - dir * size;
 
         // set the vector perpendicular to tip->base, half the size of the base.
-        let perp = egui::vec2(-dir.y, dir.x) * (size * 0.5);
+        let perp = vec2(-dir.y, dir.x) * (size * 0.5);
 
         let p1 = base + perp;
         let p2 = base - perp;
@@ -308,7 +303,7 @@ impl<'a, N: BlockLike, E: EdgeLike> CfgView<'a, N, E> {
 
     /// This will assign a port "edge", from one port to another.
     ///
-    /// For every node in the in the graph connect each outgoing to port to an incoming port.
+    /// For every node in the graph connect each outgoing to port to an incoming port.
     fn assign_port_lines(&mut self) {
         let center_x = |n: NodeIndex| {
             self.block_rects
@@ -404,7 +399,7 @@ impl<'a, N: BlockLike, E: EdgeLike> CfgView<'a, N, E> {
     }
 
     fn draw_edges(&mut self, ui: &mut egui::Ui, scene_rect: egui::Rect) {
-        let mut field = self.build_field(scene_rect);
+        let field = self.build_field(scene_rect);
 
         let id = ui.make_persistent_id("cfg_edge_cache_v1");
         let mut routed_polylines: Vec<(Vec<egui::Pos2>, PortLine)> = Vec::new();
@@ -420,19 +415,11 @@ impl<'a, N: BlockLike, E: EdgeLike> CfgView<'a, N, E> {
                     .and_then(|e| self.graph.edge_weight(e))
                     .map(|e| e.kind());
 
-                let should_dash = match edge_kind {
-                    Some(EdgeKind::FallThrough) => true,
-                    _ => false,
-                };
+                let should_dash = matches!(edge_kind, Some(EdgeKind::FallThrough));
 
-                let is_selected = match self.selected.clone() {
-                    Some(node) if pl.from.node == node => true,
-                    _ => false,
-                };
+                let is_selected = matches!(*self.selected, Some(node) if pl.from.node == node);
 
                 if should_dash && is_selected {
-                    let stroke = Stroke::new(2.0, self.style.select_bg);
-
                     ui.painter().add(egui::Shape::dotted_line(
                         &poly,
                         self.style.select.color.gamma_multiply(0.5),
@@ -444,11 +431,6 @@ impl<'a, N: BlockLike, E: EdgeLike> CfgView<'a, N, E> {
                 }
 
                 if is_selected {
-                    let stroke = Stroke::new(
-                        self.style.select.width,
-                        self.style.select.color.gamma_multiply(0.5),
-                    );
-
                     ui.painter()
                         .add(egui::Shape::line(poly.clone(), self.style.select));
 
@@ -490,7 +472,7 @@ impl<'a, N: BlockLike, E: EdgeLike> CfgView<'a, N, E> {
     pub fn show(&mut self, ui: &mut Ui, scene_rect: &mut Rect) {
         // calculate the layout of the graph.
         // btw this should be pretty cheap to calculate.
-        let layout = get_cfg_layout(ui, &self.graph, &self.layout_config, &self.style);
+        let layout = get_cfg_layout(ui, &self.graph, &self.layout_config, self.style);
 
         egui::Scene::new()
             .max_inner_size([layout.width as f32 + 800.0, layout.height as f32 + 800.0])

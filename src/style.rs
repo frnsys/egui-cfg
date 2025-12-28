@@ -1,16 +1,14 @@
 use egui::{self, Color32, FontId, Stroke, TextStyle, Vec2, vec2};
 
-use crate::BlockLike;
-
 /// This is the style of the Basic Block graph node.
 ///
-/// a.k.a how it actaully appears when rendered.
+/// a.k.a. how it actually appears when rendered.
 #[derive(Clone)]
 pub struct NodeStyle {
-    pub size: egui::Vec2,
+    pub size: Vec2,
     /// The n,w,e,s padding inside of the node.
-    pub padding: egui::Vec2,
-    pub button_padding: egui::Vec2,
+    pub padding: Vec2,
+    pub button_padding: Vec2,
     pub rounding: u8,
     pub fill: Color32,
     pub header_fill: Color32,

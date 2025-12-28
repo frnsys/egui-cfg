@@ -1,7 +1,9 @@
 use egui_cfg::{BlockLike, EdgeKind, LayoutConfig, style::NodeStyle, view::CfgView};
 
 use eframe::egui::{self, Rect, pos2, vec2};
+use eframe::epaint::text::LayoutJob;
 use eframe::{self};
+use egui::TextFormat;
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
 
@@ -13,12 +15,12 @@ struct BasicBlock {
 }
 
 impl BlockLike for BasicBlock {
-    fn title(&self) -> &str {
+    fn title(&self) -> &String {
         &self.title
     }
 
-    fn body_lines(&self) -> &[String] {
-        &self.code
+    fn body_layouts(&self) -> LayoutJob {
+        LayoutJob::single_section(self.code.join("\n"), TextFormat::default())
     }
 }
 
@@ -60,6 +62,7 @@ fn build_dummy_cfg() -> StableGraph<BasicBlock, EdgeKind> {
     g.add_edge(cond, else_, EdgeKind::FallThrough);
     g.add_edge(then_, exit, EdgeKind::Unconditional);
     g.add_edge(else_, exit, EdgeKind::Unconditional);
+    g.add_edge(then_, cond, EdgeKind::FallThrough);
 
     g
 }
